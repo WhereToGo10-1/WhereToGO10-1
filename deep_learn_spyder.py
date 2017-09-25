@@ -3,19 +3,37 @@
 Created on Sun Sep 24 21:37:55 2017
 
 @author: xubing
+@author: xie,hanshuang
+modification:add selling price on 2017-9-25
 """
 from selenium import webdriver
 import time
 import pymysql
 import matplotlib.pyplot as plt
 from pylab import mpl
+    #######################
+conn = pymysql.connect(
+        host = 'localhost',
+        port = 3306,
+        user = 'root',
+        passwd = '',
+        db = 'mysqldb',
+        charset = 'utf8'
+        )
+cur = conn.cursor()
+cur.execute('drop table if exists sights_table')
+cur.execute('create table sights_table(place varchar(30) primary key,sales int,address varchar(30),hot int,price float)')
+cur.execute('ALTER TABLE `sights_table` CHANGE `place` `place` VARCHAR(36) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL')
+cur.execute('ALTER TABLE `sights_table` CHANGE `address` `address` VARCHAR(36) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL')
+
 mpl.rcParams['font.sans-serif'] = ['SimHei'] 
+
 #1.从基网址出发，爬取所关心的信息
 def get_urls_useful_info(place):
     #收集网页的基本信息
     ####################
     Baseurl = 'http://piao.qunar.com/ticket/list.htm?keyword=%s&region=&from=mpl_search_suggest'%(place)
-#   Baseurl = 'http://piao.qunar.com/ticket/list.htm?keyword=%s=&from=mpl_search_suggest&sort=pp&page=1'
+    #Baseurl = 'http://piao.qunar.com/ticket/list.htm?keyword=%s=&from=mpl_search_suggest&sort=pp&page=1'
     browser = webdriver.Chrome()#模拟出一个Chrome浏览器
     browser.set_page_load_timeout(30)#设置加载超时时间
     browser.get(Baseurl)#打开网址
@@ -39,18 +57,7 @@ def get_urls_useful_info(place):
 #    print (url)
 
     #   利用此时的url爬取前n页的数据,并存入数据库中
-    #######################
-    conn = pymysql.connect(
-            host = 'localhost',
-            port = 3306,
-            user = 'root',
-            passwd = '123456',
-            db = 'test',
-            charset = 'utf8'
-            )
-    cur = conn.cursor()
-    cur.execute('drop table if exists sights_table')
-    cur.execute('create table sights_table(place varchar(30) primary key,sales int)')
+
     for page in range(int(pages)):
        #这里控制爬取多少页的信息
         if page > 9:
@@ -69,31 +76,40 @@ def get_urls_useful_info(place):
                 sales = int(str(sales))
             except:
                 sales = 0
-            sql = '''insert ignore into sights_table values("{0}","{1}")'''.format(place,sales)
+            address=item.find_element_by_css_selector('div > div.sight_item_about > div > p > span').text.split('：')[1]
+            try:
+                hot=item.find_element_by_css_selector('div > div.sight_item_about > div > div.clrfix > div > span.product_star_level > em > span').text.split(' ')[1]
+                hot=float(hot)
+            except:
+                hot=0.0
+            price=item.find_element_by_css_selector('div > div.sight_item_pop > table > tbody > tr:nth-child(1) > td > span > em').text
+            price=float(price)
+
+            sql = '''insert ignore into sights_table values("{0}","{1}","{2}","{3}","{4}")'''.format(place,sales,address,hot,price)
 #            cur.execute('set names gbk')
             cur.execute(sql)#这里可能出现不能插入，是由于字符集的问题。
 #            print (place,sales)
 #        print('........................')
     cur.close()
     conn.commit()
-    conn.close()       
+#    conn.close()       
+
+def calculate(tupl):
+    ratio_sales=3
+    ratio_hot=5
+    ratio_price=2
+    recmdvalue=tupl[1]*ratio_sales+tupl[3]*ratio_hot+tupl[4]*ratio_price
+    return recmdvalue
 #2.对于目标城市，根据2,8原则，获取处于20%这个点左右的经典进行推荐，绘制图
 def rec_sights(place):
-    conn = pymysql.connect(
-            host = 'localhost',
-            port = 3306,
-            user = 'root',
-            passwd = '123456',
-            db = 'test',
-            charset = 'utf8'
-            )
     cur = conn.cursor()
     sql = 'select * from sights_table'
     all = cur.execute(sql)
+    
     all_sights = cur.fetchmany(all)
     dict1 = {}
     for sight in all_sights:
-        dict1[sight[0]] = sight[1]
+        dict1[sight[0]] = calculate(sight)
 #        print (sight)
 #    print (dict1)
     cur.close()
@@ -111,7 +127,7 @@ def rec_sights(place):
     z = 0
     for item in dict2:
         if z<=20:
-            x.append(item[0])
+            x.append(item[0].split(',')[0])
             y.append(int(item[1]))
         z+=1
     #print (x,y)
