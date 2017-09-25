@@ -94,14 +94,14 @@ def get_urls_useful_info(place):
     conn.commit()
 #    conn.close()       
 
-def calculate(tupl):
+def calculate(tupl,ratio_sales,ratio_hot,ratio_price):
     ratio_sales=3
     ratio_hot=5
     ratio_price=2
     recmdvalue=tupl[1]*ratio_sales+tupl[3]*ratio_hot+tupl[4]*ratio_price
     return recmdvalue
 #2.对于目标城市，根据2,8原则，获取处于20%这个点左右的经典进行推荐，绘制图
-def rec_sights(place):
+def rec_sights(place,ratio_sales,ratio_hot,ratio_price):
     cur = conn.cursor()
     sql = 'select * from sights_table'
     all = cur.execute(sql)
@@ -109,7 +109,7 @@ def rec_sights(place):
     all_sights = cur.fetchmany(all)
     dict1 = {}
     for sight in all_sights:
-        dict1[sight[0]] = calculate(sight)
+        dict1[sight[0]] = calculate(sight,ratio_sales,ratio_hot,ratio_price)
 #        print (sight)
 #    print (dict1)
     cur.close()
@@ -145,10 +145,14 @@ if '__name__==__main__':
            \n作者:徐卜灵''') 
     while(1):
         place = input('请输入您的目标城市(输入0退出系统)：')
+        ls=list(map(int,input('以10分为总分，请输入销量，热度，售价在您心目中的比分，并以空格隔开：').split()))
+        ratio_sales=ls[0]
+        ratio_hot=ls[1]
+        ratio_price=ls[2]
         if place =='0':
             break
         get_urls_useful_info(place)
-        rec_sights(place)        
+        rec_sights(place,ratio_sales,ratio_hot,ratio_price)        
         
         
     
