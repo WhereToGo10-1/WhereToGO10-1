@@ -11,6 +11,8 @@ import time
 import pymysql
 import matplotlib.pyplot as plt
 from pylab import mpl
+from matplotlib import cm
+import numpy as np
     #######################
 conn = pymysql.connect(
         host = 'localhost',
@@ -131,10 +133,12 @@ def rec_sights(place,ratio_sales,ratio_hot,ratio_price):
             y.append(int(item[1]))
         z+=1
     #print (x,y)
+    n=np.arange(len(x))
+    colors=cm.jet((n+1)*12/max((n+1)*12))
     x.reverse()
     y.reverse()
     plt.yticks(range(len(x)),x)
-    plt.barh(range(len(x)),y,height = 0.5)
+    plt.barh(range(len(x)),y,height = 0.5,align="center",color=colors)
     plt.show()
     print('以2、8原则为您推荐:')
     print('在{0}为您推荐的景点是：\n{1},\n{2},\n{3}'.format(place,rec_sig1,rec_sig2,rec_sig3))
