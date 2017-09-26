@@ -95,11 +95,11 @@ def get_urls_useful_info(place):
     cur.close()
     conn.commit()
 #    conn.close()       
-
-def calculate(tupl,ratio_sales,ratio_hot,ratio_price):
-    ratio_sales=3
-    ratio_hot=5
-    ratio_price=2
+# 销量和热度是越高越好，售价越低越好
+def calculate(tupl,sales,hot,price):
+    ratio_sales=sales/10
+    ratio_hot=hot/10
+    ratio_price=(10-price)/10
     recmdvalue=tupl[1]*ratio_sales+tupl[3]*ratio_hot+tupl[4]*ratio_price
     return recmdvalue
 #2.对于目标城市，根据2,8原则，获取处于20%这个点左右的经典进行推荐，绘制图
@@ -111,7 +111,7 @@ def rec_sights(place,ratio_sales,ratio_hot,ratio_price):
     all_sights = cur.fetchmany(all)
     dict1 = {}
     for sight in all_sights:
-        dict1[sight[0]] = calculate(sight,ratio_sales,ratio_hot,ratio_price)
+        dict1[sight[0]+'，地址：'+sight[2]+'，综合热度评分：'] = calculate(sight,ratio_sales,ratio_hot,ratio_price)
 #        print (sight)
 #    print (dict1)
     cur.close()
@@ -129,7 +129,7 @@ def rec_sights(place,ratio_sales,ratio_hot,ratio_price):
     z = 0
     for item in dict2:
         if z<=20:
-            x.append(item[0].split(',')[0])
+            x.append(item[0].split('，')[0])
             y.append(int(item[1]))
         z+=1
     #print (x,y)
@@ -146,17 +146,19 @@ def rec_sights(place,ratio_sales,ratio_hot,ratio_price):
 
 if '__name__==__main__':
     print ('''*********欢迎来到十一去哪玩儿系统！*********\n只需要输入您想去的城市，\n系统会自动为您推荐既不是人山人海，\n又不是鸟不拉屎的景点！
-           \n作者:徐卜灵''') 
+           \n作者:徐卜灵，谢寒霜''') 
     while(1):
         place = input('请输入您的目标城市(输入0退出系统)：')
-        ls=list(map(int,input('以10分为总分，请输入销量，热度，售价在您心目中的比分，并以空格隔开：').split()))
-        ratio_sales=ls[0]
-        ratio_hot=ls[1]
-        ratio_price=ls[2]
         if place =='0':
+            print('祝您旅途愉快！')
             break
-        get_urls_useful_info(place)
-        rec_sights(place,ratio_sales,ratio_hot,ratio_price)        
+        else:
+            ls=list(map(int,input('以10分为总分，请输入销量，热度，售价在您心目中的比分，并以空格隔开：').split()))
+            ratio_sales=ls[0]
+            ratio_hot=ls[1]
+            ratio_price=ls[2]
+            get_urls_useful_info(place)
+            rec_sights(place,ratio_sales,ratio_hot,ratio_price)        
         
         
     
