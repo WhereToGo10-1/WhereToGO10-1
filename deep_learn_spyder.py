@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from pylab import mpl
 from matplotlib import cm
 import numpy as np
+import requests
     #######################
 conn = pymysql.connect(
         host = 'localhost',
@@ -62,7 +63,7 @@ def get_urls_useful_info(place):
 
     for page in range(int(pages)):
        #这里控制爬取多少页的信息
-        if page > 9:
+        if page > 1:
             break
         dt_url = url+str(page+1)
         browser.get(dt_url)
@@ -99,8 +100,8 @@ def get_urls_useful_info(place):
 def calculate(tupl,sales,hot,price):
     ratio_sales=sales/10
     ratio_hot=hot/10
-    ratio_price=(10-price)/10
-    recmdvalue=tupl[1]*ratio_sales+tupl[3]*ratio_hot+tupl[4]*ratio_price
+    ratio_price=price/10
+    recmdvalue=round(tupl[1]*ratio_sales+tupl[3]*ratio_hot-tupl[4]*ratio_price,2)
     return recmdvalue
 #2.对于目标城市，根据2,8原则，获取处于20%这个点左右的经典进行推荐，绘制图
 def rec_sights(place,ratio_sales,ratio_hot,ratio_price):
@@ -111,7 +112,7 @@ def rec_sights(place,ratio_sales,ratio_hot,ratio_price):
     all_sights = cur.fetchmany(all)
     dict1 = {}
     for sight in all_sights:
-        dict1[sight[0]+'，地址：'+sight[2]+'，综合热度评分：'] = calculate(sight,ratio_sales,ratio_hot,ratio_price)
+        dict1[sight[0]+'，地址：'+sight[2]] = calculate(sight,ratio_sales,ratio_hot,ratio_price)
 #        print (sight)
 #    print (dict1)
     cur.close()
@@ -140,10 +141,26 @@ def rec_sights(place,ratio_sales,ratio_hot,ratio_price):
     plt.yticks(range(len(x)),x)
     plt.barh(range(len(x)),y,height = 0.5,align="center",color=colors)
     plt.show()
-    print('以2、8原则为您推荐:')
-    print('在{0}为您推荐的景点是：\n{1},\n{2},\n{3}'.format(place,rec_sig1,rec_sig2,rec_sig3))
-    print('这里人既不会特别多，景点也不会不好玩！')
-
+    return rec_sig1,rec_sig2,rec_sig3
+def printInfo(rec_sig1):
+    #以冒号分隔之后，分别为：['杭州动物园', '地址：浙江省杭州市西湖区虎跑路40号', '综合热度评分：']
+    list1=rec_sig1[0].split('，')
+    str1=list1[1].split('：')[1].strip("'")
+    lon,lat=get_lng_lat(str1)
+    Info=list1[0]+'，'+list1[1]+'，经纬度为：('+str(round(lon,2))+','+str(round(lat,2))+')，综合热度评分：'+str(rec_sig1[1])
+    print(Info) 
+#    print('在{0}为您推荐的景点是：\n{1},\n{2},\n{3}'.format(place,rec_sig1,rec_sig2,rec_sig3))
+    
+#输入地址，输出给定地址的经纬度
+def get_lng_lat(address):   
+    address = address
+    url= 'http://api.map.baidu.com/geocoder?output=json&key=Q8WAb6s5IunRGZflWX4U8oxu9zE9WeGe&address='+str(address)
+    response = requests.get(url)
+    answer = response.json()
+    lon = float(answer['result']['location']['lng'])
+    lat = float(answer['result']['location']['lat'])
+    return lon,lat
+    
 if '__name__==__main__':
     print ('''*********欢迎来到十一去哪玩儿系统！*********\n只需要输入您想去的城市，\n系统会自动为您推荐既不是人山人海，\n又不是鸟不拉屎的景点！
            \n作者:徐卜灵，谢寒霜''') 
@@ -158,7 +175,11 @@ if '__name__==__main__':
             ratio_hot=ls[1]
             ratio_price=ls[2]
             get_urls_useful_info(place)
-            rec_sights(place,ratio_sales,ratio_hot,ratio_price)        
-        
+            rec_sig1,rec_sig2,rec_sig3=rec_sights(place,ratio_sales,ratio_hot,ratio_price)           
+            print('以2、8原则为您推荐: \n-----------------')
+            printInfo(rec_sig1)
+            printInfo(rec_sig2)
+            printInfo(rec_sig3)
+            print('-----------------\n这里人既不会特别多，景点也不会不好玩！')
         
     
